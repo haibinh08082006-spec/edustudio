@@ -48,12 +48,23 @@ function viewLesson(x){
    e.preventDefault();
    const student={name:$('studentName').value.trim(),studentClass:$('studentClass').value.trim(),school:$('studentSchool').value.trim()};
    if(!student.name||!student.studentClass||!student.school)return;
+   
+let leaveCount = 0;
+const leaveTimes = [];
+const trackLeave = () => {
+  if (document.hidden) {
+    leaveCount++;
+    leaveTimes.push(new Date().toISOString());
+  }
+};
+document.addEventListener('visibilitychange', trackLeave);
+
    const area=$('quizArea');area.hidden=false;$('studentForm').hidden=true;
    area.innerHTML=`<hr><h3>🎯 ${esc(quiz.question)}</h3><form id="answerForm">${quiz.options.map((o,i)=>`<label class="quiz-choice"><input type="radio" name="answer" value="${i}" required><span><strong>${String.fromCharCode(65+i)}.</strong> ${esc(o)}</span></label>`).join('')}<button type="submit">Nộp bài và xem điểm</button></form><p class="status">Bài làm gồm 1 câu hỏi. Hãy chọn một đáp án rồi nộp bài.</p>`;
    $('answerForm').addEventListener('submit',async ev=>{
     ev.preventDefault();
     const chosen=Number(new FormData(ev.target).get('answer')),correct=chosen===Number(quiz.correct),correctCount=correct?1:0,score=correct?10:0;
-    const result={studentName:student.name,studentClass:student.studentClass,school:student.school,lessonId:String(x.id),lessonTitle:String(x.title),correct:correctCount,total:1,score,submittedAt:serverTimestamp()};
+    const result={studentName:student.name,studentClass:student.studentClass,school:student.school,lessonId:String(x.id),lessonTitle:String(x.title),correct:correctCount,total:1,score,submittedAt:serverTimestamp(),leaveCount:leaveCount,leaveTimes:leaveTimes};
     const btn=ev.target.querySelector('button[type="submit"]');btn.disabled=true;
     try{await addDoc(collection(db,'results'),result);area.innerHTML=`<div class="card"><span class="student-chip">Đã lưu kết quả</span><h3>🎉 Em đã hoàn thành bài!</h3><p>Họ tên: <strong>${esc(student.name)}</strong><br>Lớp: ${esc(student.studentClass)}<br>Trường: ${esc(student.school)}</p><div class="stat">${score}/10 điểm</div><p>${correct?'Chính xác! Em trả lời đúng.':'Chưa đúng. Hãy ôn lại bài và thử lại khi giáo viên cho phép.'}</p><p>Kết quả đã được gửi cho giáo viên.</p></div>`}
     catch(err){btn.disabled=false;area.insertAdjacentHTML('beforeend',`<div class="notice">Chưa lưu được kết quả lên hệ thống. Hãy báo giáo viên kiểm tra Firestore Rules. ${esc(err.message)}</div>`)}
